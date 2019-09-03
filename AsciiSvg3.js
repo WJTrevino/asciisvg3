@@ -64,10 +64,11 @@ this.Config = {
 		containerStyle: "",
 		paddingPX: 20,
 		bgFill: "#FFFFFF",
-		xMinXY: -10,
-		xMaxXY: 10,
-		yMinXY: -10,
-		yMaxXY: 10
+		boundingBox: undefined,
+		xMin: 0,
+		xMax: 0,
+		yMin: 0,
+		yMax: 0
 	},
 	pathDefaults: {
 		arrowFillColor: "#666666",
@@ -83,6 +84,7 @@ this.Config = {
 		markerSize: 4,
 		markerType: "none",
 		segmentStrokeWidth: 1,
+		strokewidth: 2,
 		strokeOpacity: 1,
 		tickLength: 4 
 	}
@@ -98,8 +100,11 @@ class Board {
 		this.boardElement.classList.add("asvg-borard");
 		this.boardOptions = {...context.Config.boardDefaults,...localOptions};
 		this.boardOptions.containerStyle = containerStyle; // if string
-		if (typeof containerStyle  === "string") {
+		if (typeof(containerStyle) === "string") {
 			this.boardElement.style = containerStyle;
+		}
+		if (typeof(boundingBox) !== "undefined") {
+
 		}
 		this.Paths = {};
 		this.context = context;
@@ -110,7 +115,12 @@ class Board {
 		context.V2.initBoard(boardId,-5,5,-5,5);
 		context.V2.axes(1,1,"TRUE",1,1);
 		context.V2.circle([0,0],1,"circle1");
-		context.V2.plot("x^2+x,-3,2");
+		context.V2.plot("x^2+x",-3,2);
+	}
+
+	set boundingBox(box) {
+		this.boundingBox = box;
+		xMin, xMax, yMin, yMax = box;
 	}
 
 	updatePosition() {
@@ -346,7 +356,8 @@ var showYaxis = 1;
 var doGrids = 1;
 var boardWidth, boardHeight, boardWidthToHeight=1, boardLeft, boardTop;
 var xMin, yMin, xMax, yMax, xunitlength, yunitlength;
-var xmin, xmax, ymin, ymax, 
+var xmin, xmax, ymin, ymax,
+		actualXmin, actualXmax, actualYmin, actualYmax,
 		xgrid, ygrid, xtick, ytick, initialized, opacity, stroke, below;
 var elementIdNum = 999; 
 var padding = 20;
@@ -1620,8 +1631,8 @@ this.path = function(plist,id,c) {
 	//    st += (plist[0][0]*xunitlength+origin[0]).toFixed(2)+","+
 	//          boardHeight, (boardHeight-plist[0][1]*yunitlength-origin[1]).toFixed(2)+" "+c;
 	//console.log(plist[0][0]);     
-		curveLengthCart = 0;
-		curveLengthPix = 0;
+		var curveLengthCart = 0;
+		var curveLengthPix = 0;
 		for (i=0; i<plist.length; i++) {
 			if(plist[i][1] > brdPropsArr[brdID]["plotYmin"] && plist[i][1] < brdPropsArr[brdID]["plotYmax"]) {
 				st += (plist[i][0]*xunitlength+origin[0]).toFixed(2)+","+
@@ -1662,6 +1673,8 @@ this.path = function(plist,id,c) {
 var x;
 this.plot = function(fun, x_min, x_max, points, id) {
 
+	// Revision pre-3.00: Remove "with(Math)" by revising mathjs().
+
 	///////////////////////////////////////////
 	//
 	// xmin, xmax are board minimum, maximum
@@ -1700,7 +1713,12 @@ this.plot = function(fun, x_min, x_max, points, id) {
 	
 	var plotYmin = brdPropsArr[brdID]["plotYmin"];
 	var plotYmax = brdPropsArr[brdID]["plotYmax"];
-	
+
+	var gtPrevPix = 0;
+	var gtPix = 0;
+	var gtNextPix = 0;
+	var slopNextPix = 0;
+	var slopPrevPix = 0;
 	
 	
 	var pushBeforeYmin = true;
@@ -1710,10 +1728,10 @@ this.plot = function(fun, x_min, x_max, points, id) {
 	if (typeof fun == "string" && fun.indexOf("y") > -1) {
 
 		if (typeof fun=="string") {
-			eval("g = function(y){ with(Math) return "+mathjs(fun)+"; }");
+			eval("g = function(y){ return "+mathjs(fun)+"; }");
 		} else if (typeof fun=="object") {
-			eval("f = function(t){ with(Math) return "+mathjs(fun[0])+" }");
-			eval("g = function(t){ with(Math) return "+mathjs(fun[1])+" }");
+			eval("f = function(t){ return "+mathjs(fun[0])+" }");
+			eval("g = function(t){ return "+mathjs(fun[1])+" }");
 		}
 		if (typeof x_min=="string") { name = x_min; x_min = xmin }
 			else name = id; 
@@ -1740,14 +1758,18 @@ this.plot = function(fun, x_min, x_max, points, id) {
 		//
 		// CASE 0: If continuous and all within graph limits, plot it and give it id
 		// CASE 1: Goes outside upper or lower graph limits - break and send to this.path() - give idInc extension for id
-				
+		
+		var xPlotMin = 0;
+		var xPlotMax = 0;
+
+
 		if (typeof fun == "string") {
-			eval("g = function(x){ with(Math) return " + mathjs(fun) + "; }");
+			eval("g = function(x){ return " + mathjs(fun) + "; }");
 		} else if (typeof fun == "number") {
 			eval("g = function(x){ return " + fun + "; }");
 		} else if (typeof fun == "object") {
-			eval("f = function(t){ with(Math) return " + mathjs(fun[0]) + "; }");
-			eval("g = function(t){ with(Math) return " + mathjs(fun[1]) + "; }");
+			eval("f = function(t){ return " + mathjs(fun[0]) + "; }");
+			eval("g = function(t){ return " + mathjs(fun[1]) + "; }");
 		}
 		if(plotBeyondXVis) { // For animation cases, e.g. standing wave: /trigonometric-graphs/6-composite-trigonometric-graphs.php
 			xPlotMin = x_min;
@@ -1773,11 +1795,11 @@ this.plot = function(fun, x_min, x_max, points, id) {
 		gtPix = boardHeight - (origin[1] + g(min) * yunitlength);
 		gtNextPix = boardHeight - (origin[1] + g(min+inc) * yunitlength);
 		
-		var slopNextPix = (gtPix - gtNextPix)/inc;
-		slopPixRem = (gtPix - gtPrevPix)/inc;
+		slopNextPix = (gtPix - gtNextPix)/inc;
+		var slopPixRem = (gtPix - gtPrevPix)/inc;
 		
-		pushFlag = false;
-		slopSwingFlag = false;
+		var pushFlag = false;
+		var slopSwingFlag = false;
 
 		if( typeof(brdPropsArr[brdID][id]) == "undefined") {
 			brdPropsArr[brdID][id] = [];
@@ -1793,7 +1815,7 @@ this.plot = function(fun, x_min, x_max, points, id) {
 		}
 		
 		// For testing
-		colorsArr = ["#f08","#0f8","#8f0","#f80","#08f","#80f","#338","#f8f","#f00","#0f0","#f0f","#5f5",
+		const colorsArr = ["#f08","#0f8","#8f0","#f80","#08f","#80f","#338","#f8f","#f00","#0f0","#f0f","#5f5",
 						"#f08","#0f8","#8f0","#f80","#08f","#80f","#338","#f8f","#f00","#0f0","#f0f","#5f5",
 						"#f08","#0f8","#8f0","#f80","#08f","#80f","#338","#f8f","#f00","#0f0","#f0f","#5f5"];
 		
@@ -1801,8 +1823,7 @@ this.plot = function(fun, x_min, x_max, points, id) {
 		var incRem = inc;
 		var incSub = 20;
 		var inc = inc/incSub;
-		var sub = 0;
-						
+		var sub = 0;						
 		
 		for (t = min; t < max; t += inc) {
 			
@@ -1822,11 +1843,11 @@ this.plot = function(fun, x_min, x_max, points, id) {
 					t = 0.0000000001;
 				}
 			}           
-			gtPrev = g(t-inc);
+			var gtPrev = g(t-inc);
 			gt = g(t);
-			gtNext = g(t+inc);
-			gtNextNext = g(t+2*inc);
-			slopCart = (gtRem - gt) / inc;
+			var gtNext = g(t+inc);
+			var gtNextNext = g(t+2*inc);
+			var slopCart = (gtRem - gt) / inc;
 //console.log(t,gt)           
 			gtPrevPix = boardHeight - (origin[1] + gtPrev * yunitlength);
 			gtPix = boardHeight - (origin[1] + gt * yunitlength);
@@ -1834,17 +1855,17 @@ this.plot = function(fun, x_min, x_max, points, id) {
 			//      
 			slopPrevPix = (gtPrevPix - gtPix)/inc;
 			slopNextPix = (gtPix - gtNextPix) / inc;
-			//
-			gtIsNum =  (!isNaN(gt) && Math.abs(gt)!="Infinity") ? true : false;
-			gtisLessPlotYmin = (gt < plotYmin) ? true : false;
-			gtBetweenMins = (gt > plotYmin && gt < actualYmin) ? true : false;      
-			aveMins = 0.5*(plotYmin + actualYmin);      
-			gtPrevVis = (gtPrev > actualYmin && gtPrev < actualYmax) ? true : false;
-			gtVis = (gt > actualYmin && gt < actualYmax) ? true : false;      
-			gtNextVis = (gtNext > actualYmin && gtNext < actualYmax) ? true : false;      
-			gtBetweenMaxs = (gt > actualYmax && gt < plotYmax) ? true : false;
-			gtisMorePlotYmax = (gt > plotYmax) ? true : false;      
-			aveMaxs = 0.5*(actualYmax + plotYmax);      
+			// many of these variables seem orphaned...
+			var gtIsNum =  (!isNaN(gt) && Math.abs(gt)!="Infinity") ? true : false;
+			var gtisLessPlotYmin = (gt < plotYmin) ? true : false;
+			var gtBetweenMins = (gt > plotYmin && gt < actualYmin) ? true : false;      
+			var aveMins = 0.5*(plotYmin + actualYmin);      
+			var gtPrevVis = (gtPrev > actualYmin && gtPrev < actualYmax) ? true : false;
+			var gtVis = (gt > actualYmin && gt < actualYmax) ? true : false;      
+			var gtNextVis = (gtNext > actualYmin && gtNext < actualYmax) ? true : false;      
+			var gtBetweenMaxs = (gt > actualYmax && gt < plotYmax) ? true : false;
+			var gtisMorePlotYmax = (gt > plotYmax) ? true : false;      
+			var aveMaxs = 0.5*(actualYmax + plotYmax);      
 			slopSwingFlag = false;
 			
 			
@@ -2065,8 +2086,10 @@ function chopZ(st) {
 }
 
 // temp expose for debug
-//function mathjs(st) {
-this.mathjs = function(st) {
+function mathjs(st) {
+// this.mathjs = function(st) {
+
+	// Revision pre-3.00: Add Math. to all relevant values.
 
 	// Translate a math formula to js function notation
 	// e.g. a^b --> pow(a,b), na --> n*a, (...)d --> (...)*d
@@ -2141,7 +2164,7 @@ this.mathjs = function(st) {
 		} else { 
 			return "Error: incorrect syntax in "+st+" at position "+k;
 		}
-		st = st.slice(0,j+1)+"pow("+st.slice(j+1,i)+","+st.slice(i+1,k)+")"+
+		st = st.slice(0,j+1)+"Math.pow("+st.slice(j+1,i)+","+st.slice(i+1,k)+")"+
 					 st.slice(k);
 	}
 
@@ -2181,27 +2204,25 @@ this.mathjs = function(st) {
 }
 
 // TEMP FUNCTION DELETEME
-this.mathjs2 = function(st) {
-	st = st.replace(/\s/g,"");
-	if (st == "e") return "Math.E";
-	st = st.replace(/((?:sin|cos|tan|sec|csc|cot)[h]?)\^(?:-1|\(-1\))/g,"arc$1");
-	st = st.replace(/^e([\(a-z])/gi,"(Math.E)*$1")
-	st = st.replace(/([^a-z])e([^a-z])/gi,"$1*(Math.E)*$2")
-	st = st.replace(/(\d)([\(a-z])/gi,"$1*$2")
-	st = st.replace(/\)([\(a-z])/gi,")*$1")
-	st = st.replace(/log/g,"Math.log10");
-
-
-	return st;
-}
+// this.mathjs2 = function(st) {
+// 	st = st.replace(/\s/g,"");
+// 	if (st == "e") return "Math.E";
+// 	st = st.replace(/((?:sin|cos|tan|sec|csc|cot)[h]?)\^(?:-1|\(-1\))/g,"arc$1");
+// 	st = st.replace(/^e([\(a-z])/gi,"(Math.E)*$1")
+// 	st = st.replace(/([^a-z])e([^a-z])/gi,"$1*(Math.E)*$2")
+// 	st = st.replace(/(\d)([\(a-z])/gi,"$1*$2")
+// 	st = st.replace(/\)([\(a-z])/gi,")*$1")
+// 	st = st.replace(/log/g,"Math.log10");
+// 	return st;
+// }
 
 // TEMP FUNCTION DELETEME
-this.mathjstest = function(str) {
-	var oldMJS = this.mathjs(str);
-	ASVG.log.info(`Old: ${oldMJS}`);
-	var newMJS = this.mathjs2(str);
-	ASVG.log.info(`New: ${newMJS}`);
-}
+// this.mathjstest = function(str) {
+// 	var oldMJS = this.mathjs(str);
+// 	ASVG.log.info(`Old: ${oldMJS}`);
+// 	var newMJS = this.mathjs2(str);
+// 	ASVG.log.info(`New: ${newMJS}`);
+// }
 
 
 ///////////////////////////////////////
