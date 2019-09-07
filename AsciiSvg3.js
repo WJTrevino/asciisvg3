@@ -97,10 +97,11 @@ this.Config = {
 
 class Board {
 	constructor(boardId,localOptions,context) {
-		if (typeof(boardId) !== "string") return false; // TODO exceptions?
+		if (typeof(boardId) !== 'string') return null; // TODO exceptions?
 		this.boardOptions = {...context.Config.boardDefaults,...localOptions};
 		this.boardId = boardId;
 		this.boardElement = document.getElementById(boardId);
+		if (this.bordElement === null) return null; // TODO exceptions?
 		this.boardElement.classList.add("asvg-board");
 		this.boardElement.style.cssText += `${this.boardOptions.containerStyle};`;
 		this.Paths = {};
@@ -138,7 +139,7 @@ this.createBoard = function(boardId,localBoardOptions={}) { // analogue: initBoa
 	var mergedBoardOptions = {...this.Config.boardDefaults,...localBoardOptions};
 	var board = {};
 
-	if (typeof(this.Boards[boardId]) === "object") {
+	if (this.Boards[boardId] instanceof Board) {
 		this.log.warn(`Board already exists with same ID: ${boardId}`);
 		return this.Boards[boardId];
 	}
@@ -150,7 +151,7 @@ this.createBoard = function(boardId,localBoardOptions={}) { // analogue: initBoa
 }
 
 this.getBoard = function(id) { // analogue: setBoardParams(), kind of
-	if (typeof(this.Boards[id]) !== "object") {
+	if (!(this.Boards[id] instanceof Board)) {
 		this.log.error(`Board ID does not exist: {$id}`);
 		return null;
 	}
@@ -160,7 +161,7 @@ this.getBoard = function(id) { // analogue: setBoardParams(), kind of
 this.deleteBoard = function (id) {
 	var board = {};
 
-	if (typeof(id) === "string") {
+	if (typeof(id) === 'string') {
 		board = this.getBoard(id);
 		board.deleteBoard();
 	} else if (id instanceof Board) {
@@ -204,7 +205,8 @@ this.deletePath = function() {
 
 // Method: polarAxes()?
 
-
+// Change to drawing functions: should they accept XY positions (and convert them
+// to PX positions via method)? Would make specifying curves easier.
 
 
 
@@ -525,7 +527,7 @@ function contains(arr, obj) {
 function makeSVG(tag, attrs, eleId) { 
 	var el= document.createElementNS('http://www.w3.org/2000/svg', tag);
 	for (var k in attrs) {  
-		if("undefined" != typeof(attrs[k]) ) {
+		if(typeof(attrs[k]) !== 'undefined') {
 			el.setAttribute(k, attrs[k]);
 //console.log(attrs[k])     
 		}
@@ -538,7 +540,7 @@ function use(id, svgID, attrs) {
 	var useElem = document.createElementNS('http://www.w3.org/2000/svg', 'use');
 	useElem.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', "#"+id);
 	for (var k in attrs) {  
-		if("undefined" != typeof(attrs[k]) ) {
+		if(typeof(attrs[k]) !== 'undefined') {
 			useElem.setAttribute(k, attrs[k]);
 		}
 	}
@@ -671,7 +673,7 @@ this.arc = function(start,end,radius,id) { // coordinates in cartesian units
 }
 
 this.arrowhead = function(p,q,id) { 
-	if(typeof(id)=="undefined") id="arrHead"+Math.floor(Math.random() * 1000);
+	if(typeof(id) === 'undefined') id="arrHead"+Math.floor(Math.random() * 1000);
 	var ox = origin[0];
 	var oy = origin[1];
 	var rotateAngleRad = 0;
@@ -762,7 +764,7 @@ this.makeDraggable = function(targ, func, curveId) {
 	var cy = brdPropsArr[brdID][targID]["cy"];
 	var r = brdPropsArr[brdID][targID]["r"];  
 	
-	if( typeof(func) != "undefined" && func != "vert") {
+	if(typeof(func) !== 'undefined' && func != "vert") {
 		var g;
 		eval("g = function(x){ with(Math) return "+mathjs(func)+"; }");
 		///////////////////////////////////
@@ -795,10 +797,10 @@ this.makeDraggable = function(targ, func, curveId) {
 		// So target is on top of all other elements
 		gebi(svgID).appendChild(gebi(targID));
 		
-		if( typeof(brdPropsArr[brdID][targID]["trans"]) == "undefined") { 
+		if(typeof(brdPropsArr[brdID][targID]["trans"]) === 'undefined') { 
 			brdPropsArr[brdID][targID]["trans"] = [0, 0];
 		}   
-		if( typeof(brdPropsArr[brdID][targID]["transRem"]) == "undefined") {  
+		if(typeof(brdPropsArr[brdID][targID]["transRem"]) === 'undefined') {  
 			brdPropsArr[brdID][targID]["transRem"] = [0,0];
 		}   
 		
@@ -850,7 +852,7 @@ this.makeDraggable = function(targ, func, curveId) {
 		//
 		///////////////////////////////////////////////////////
 
-		if( typeof(func) == "undefined" ) {
+		if(typeof(func) === 'undefined') {
 			self.target.setAttribute("transform", "translate(" +(transXRem)+","+(transYRem)+")");
 		}   
 		brdPropsArr[brdID][targID]["cart"] = [xCart, yCart];
@@ -863,7 +865,7 @@ this.makeDraggable = function(targ, func, curveId) {
 		//
 		/////////////////////////////////////////////////
 		
-		if( typeof(brdPropsArr[brdID][targID]["segment"]) != "undefined" )  {
+		if(typeof(brdPropsArr[brdID][targID]["segment"]) !== 'undefined')  {
 			joinSegID = brdPropsArr[brdID][targID]["segment"];
 			firstPt = brdPropsArr[brdID][joinSegID][0];
 			secondPt = brdPropsArr[brdID][joinSegID][1];
@@ -878,7 +880,7 @@ this.makeDraggable = function(targ, func, curveId) {
 		//
 		/////////////////////////////////////////////////
 		
-		if( typeof(brdPropsArr[brdID][targID]["line"]) != "undefined" ) {
+		if(typeof(brdPropsArr[brdID][targID]["line"]) !== 'undefined') {
 			joinLineID = brdPropsArr[brdID][targID]["line"];
 			firstPt = brdPropsArr[brdID][joinLineID][0];
 			secondPt = brdPropsArr[brdID][joinLineID][1]
@@ -893,7 +895,7 @@ this.makeDraggable = function(targ, func, curveId) {
 		//
 		///////////////////////////////////////////////////////
 
-		if( typeof(func) != "undefined" && func != "vert") {
+		if(typeof(func) !== 'undefined' && func !== "vert") {
 			
 			//////////////////////////////////////////////
 			//
@@ -947,8 +949,8 @@ this.makeDraggable = function(targ, func, curveId) {
 		//
 		///////////////////////////////////////////////////////
 
-		if( typeof(brdPropsArr[brdID][curveId]) != "undefined" 
-				&& typeof(brdPropsArr[brdID][curveId]["vert"]) != "undefined"
+		if(typeof(brdPropsArr[brdID][curveId]) !== 'undefined' 
+				&& typeof(brdPropsArr[brdID][curveId]["vert"]) !== 'undefined'
 				&& brdPropsArr[brdID][curveId]["vert"][0][0] == brdPropsArr[brdID][curveId]["vert"][1][0] ) {
 			
 			xCart = brdPropsArr[brdID][curveId]["vert"][0][0];
@@ -977,7 +979,7 @@ this.makeDraggable = function(targ, func, curveId) {
 				gebi("eventsInfo0").innerHTML = "<b>Board:</b> "+brdID+", <b>target:</b> "+targID;
 			}
 		}
-		if( typeof(func) == "undefined" ) {
+		if(typeof(func) === 'undefined') {
 			yCart = (boardHeight - yPix - oy) / yunitlength;
 			if(gebi("eventsInfo1")) {
 				if(dragCnt%5 == 1) {
@@ -1029,7 +1031,7 @@ function Drag(evt) {
 
 	// Repeated in stopGoButt in single spring (7. Work) in case drag not first
 
-	if( typeof( currCartMatrix[slicedSVG][targetId]) == "undefined") {
+	if(typeof( currCartMatrix[slicedSVG][targetId]) === 'undefined') {
 		currCartMatrix[slicedSVG][targetId] = [];
 	}
 	
@@ -1046,12 +1048,12 @@ function Drag(evt) {
 		// So selected dot moves above all other elements on board, so can drag over them
 		thisSVGNode = document.getElementById(svgID);
 		thisSVGNode.appendChild(eTarg);
-		if ('function' === typeof window.doFirstOnElementSelect) {
+		if (typeof(window.doFirstOnElementSelect) === 'function') {
 			doFirstOnElementSelect();
 		}   
 		if (eTarg.className.baseVal=="draggable") { 
 			drag = eTarg;
-			if(typeof(drag._x) == "undefined" && !resetCxCy) {
+			if(typeof(drag._x) === 'undefined' && !resetCxCy) {
 				drag._x = 0;
 				drag._y = 0;
 			}
@@ -1061,8 +1063,8 @@ function Drag(evt) {
 			if(resetCxCy) { 
 				// 'transX' part is there in case it was just a click on dot, followed by another click (no drag)
 				// 'transform' part is if click on dot after a drag followed by another click (no subsequent drag)
-				if( typeof(currCartMatrix[slicedSVG][targetId]['currCx']) == "undefined" || typeof(currCartMatrix[slicedSVG][targetId]['currCy']) == "undefined"
-						|| typeof(currCartMatrix[slicedSVG][targetId]['transX']) == "undefined" || typeof(currCartMatrix[slicedSVG][targetId]['transY']) == "undefined"
+				if(typeof(currCartMatrix[slicedSVG][targetId]['currCx']) === 'undefined' || typeof(currCartMatrix[slicedSVG][targetId]['currCy']) === 'undefined'
+						|| typeof(currCartMatrix[slicedSVG][targetId]['transX']) === 'undefined' || typeof(currCartMatrix[slicedSVG][targetId]['transY']) === 'undefined'
 						|| eTarg.getAttribute("transform") == null ) {
 					currCartMatrix[slicedSVG][targetId]['currCx'] = Number(eTarg.getAttribute("cx"));
 					currCartMatrix[slicedSVG][targetId]['currCy'] = Number(eTarg.getAttribute("cy"));
@@ -1091,7 +1093,7 @@ function Drag(evt) {
 				drag._y = 0;        
 			}
 		}
-		if ('function' === typeof window.doAfterElementSelect) {
+		if (typeof(window.doAfterElementSelect) === 'function') {
 			doAfterElementSelect();
 		}   
 	}
@@ -1120,7 +1122,7 @@ function Drag(evt) {
 					yCart = (boardPropsArr[slicedSVG+"Height"] - mseTchPosi.y - boardPropsArr[slicedSVG+"oy"]) / boardPropsArr[slicedSVG+"YuL"];
 					currCartMatrix[slicedSVG][targetId]['xCart'] = xCart;
 					currCartMatrix[slicedSVG][targetId]['yCart'] = yCart;
-					if ('function' === typeof window.doOnElementDrag) {
+					if (typeof(window.doOnElementDrag) === 'function') {
 						doOnElementDrag();
 					}           
 				}       
@@ -1139,7 +1141,7 @@ function Drag(evt) {
 	if (drag && (et == "mouseup"  )) {
 		drag = "undefined";   
 		dragging = false;
-		if ('function' === typeof window.doOnDeselectElement) {
+		if (typeof(window.doOnDeselectElement) === 'function') {
 			doOnDeselectElement();
 		}     
 	}
@@ -1149,7 +1151,7 @@ function Drag(evt) {
 		// Makes spring fail?
 		drag = null;
 		dragging = false;
-		if ('function' === typeof window.doOnMouseOut) {
+		if (typeof(window.doOnMouseOut) === 'function') {
 			doOnMouseOut();
 		} 
 	} 
@@ -1160,7 +1162,7 @@ function mseTchPos(evt) {
 	slicedSVG = svgID.slice(0,-3);
 
 	var p = document.getElementById(svgID).createSVGPoint();
-	if(isTouch || typeof(evt.touches) != "undefined") {
+	if(isTouch || typeof(evt.touches) !== 'undefined') {
 		p.x = evt.touches[0].clientX;
 		p.y = evt.touches[0].clientY;
 	} else {
@@ -1230,10 +1232,10 @@ this.ASdot = function(center, radius, s, f, id) {
 		var xCart = center[0];
 		var yCart = center[1];
 		
-		if( typeof(currCartMatrix[slicedSVG]) == "undefined") {
+		if(typeof(currCartMatrix[slicedSVG]) === 'undefined') {
 			currCartMatrix[slicedSVG] = [];
 		}
-		if( typeof(currCartMatrix[slicedSVG][node.id]) == "undefined") {
+		if(typeof(currCartMatrix[slicedSVG][node.id]) === 'undefined') {
 			currCartMatrix[slicedSVG][node.id] = [];
 		}
 		currCartMatrix[slicedSVG][node.id]['xCart'] = xCart;
@@ -1276,7 +1278,7 @@ this.ASdot = function(center, radius, s, f, id) {
 				// Drag(evt);
 				drag = null;
 				// Must do this here because we don't go to Drag().
-				if ('function' === typeof window.doOnDeselectElement) {
+				if (typeof(window.doOnDeselectElement) === 'function') {
 					doOnDeselectElement();
 				} 
 		}, false); 
@@ -1324,7 +1326,7 @@ this.dot = function(center, typ, label, pos, id) {
 		}
 		if (label != null && label.length > 0) this.text(center, label, (pos == null ? "below" : pos), (id == null ? id : id + "label"))
 //console.log(brdID, id)  
-	if( typeof(brdPropsArr[brdID][id]) == "undefined") {
+	if(typeof(brdPropsArr[brdID][id]) === 'undefined') {
 		//console.log("hyarone")
 		brdPropsArr[brdID][id] = [];
 		brdPropsArr[brdID][id]["cart"] = [];
@@ -1425,7 +1427,7 @@ this.line = function(p, q, id, strokedasharray) {
 		}
 		p = pStart;
 		q = pEnd;
-		if(typeof(brdPropsArr[brdID][id]) == "undefined" ) {
+		if(typeof(brdPropsArr[brdID][id]) === 'undefined') {
 			brdPropsArr[brdID][id] = [];
 			brdPropsArr[brdID][id]["vert"] = [p,q];
 		}
@@ -1531,7 +1533,7 @@ this.segment = function(p, q, id, strokedasharray) {
 		//"dotarrow" means start with dot, end with arrow
 		//"arrowdot" means the arrow points to dot
 		if (marker == "dotdot" || marker == "dotarrow" || marker == "dot" || marker == "arrowdot") {
-			if(typeof(firstDotClosed) != "undefined" && firstDotClosed == 1) {
+			if(typeof(firstDotClosed) !== 'undefined' && firstDotClosed == 1) {
 				mrkrfill = corpColor;
 				fillopacity = 1;
 			} else {
@@ -1619,7 +1621,7 @@ this.path = function(plist,id,c) {
 				"vector-effect": "non-scaling-stroke"     
 				}, svgID);
 		} 
-		if (typeof plist == "string") st = plist;
+		if (typeof(plist) === 'string') st = plist;
 		else {
 //console.log( id )
 //console.log( plist.length)  
@@ -1645,7 +1647,7 @@ this.path = function(plist,id,c) {
 			}
 			}
 		}
-		if( typeof(brdPropsArr[brdID][id]) == "undefined") {
+		if(typeof(brdPropsArr[brdID][id]) === 'undefined') {
 			brdPropsArr[brdID][id] = [];
 		}
 		brdPropsArr[brdID][id]["curveLenCart"] = curveLengthCart;
@@ -1655,7 +1657,7 @@ this.path = function(plist,id,c) {
 //console.log("st = "+st, id, curveLength)
 		node.setAttribute("d", st);
 		node.setAttribute("stroke-width", strokewidth);
-		if(typeof(opacity) != "undefined") {node.setAttribute("opacity", opacity);}
+		if(typeof(opacity) !== 'undefined') {node.setAttribute("opacity", opacity);}
 		node.setAttribute("vector-effect", "non-scaling-stroke");
 		if (strokedasharray!=null) 
 		node.setAttribute("stroke-dasharray", strokedasharray);
@@ -1723,15 +1725,15 @@ this.plot = function(fun, x_min, x_max, points, id) {
 	
 	// Y CASE!  YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY
 
-	if (typeof fun == "string" && fun.indexOf("y") > -1) {
+	if (typeof(fun) === 'string' && fun.indexOf("y") > -1) {
 
-		if (typeof fun=="string") {
+		if (typeof(fun) === 'string') {
 			eval("g = function(y){ return "+mathjs(fun)+"; }");
-		} else if (typeof fun=="object") {
+		} else if (typeof(fun) === 'object') {
 			eval("f = function(t){ return "+mathjs(fun[0])+" }");
 			eval("g = function(t){ return "+mathjs(fun[1])+" }");
 		}
-		if (typeof x_min=="string") { name = x_min; x_min = xmin }
+		if (typeof(x_min) === 'string') { name = x_min; x_min = xmin }
 			else name = id; 
 
 		var min = (x_min==null?xmin:x_min);
@@ -1761,11 +1763,11 @@ this.plot = function(fun, x_min, x_max, points, id) {
 		var xPlotMax = 0;
 
 
-		if (typeof fun == "string") {
+		if (typeof(fun) === 'string') {
 			eval("g = function(x){ return " + mathjs(fun) + "; }");
-		} else if (typeof fun == "number") {
+		} else if (typeof(fun) === 'number') {
 			eval("g = function(x){ return " + fun + "; }");
-		} else if (typeof fun == "object") {
+		} else if (typeof(fun) === 'object') {
 			eval("f = function(t){ return " + mathjs(fun[0]) + "; }");
 			eval("g = function(t){ return " + mathjs(fun[1]) + "; }");
 		}
@@ -1799,7 +1801,7 @@ this.plot = function(fun, x_min, x_max, points, id) {
 		var pushFlag = false;
 		var slopSwingFlag = false;
 
-		if( typeof(brdPropsArr[brdID][id]) == "undefined") {
+		if(typeof(brdPropsArr[brdID][id]) === 'undefined') {
 			brdPropsArr[brdID][id] = [];
 		}
 		brdPropsArr[brdID][id]["minX"] = 1000000000;
@@ -1903,7 +1905,7 @@ this.plot = function(fun, x_min, x_max, points, id) {
 					//stroke = colorsArr[idInc];
 //console.log("pthLen=",pth.length) 
 //console.log("id="+typeof(id)) 
-					if(typeof(id) == "string") {
+					if(typeof(id) === 'string') {
 						// If given id, applies for first arm of graph only
 						// Subsequent ids are generated by this.path() fn.
 						this.path(pth, id);
@@ -1990,7 +1992,7 @@ this.text = function(p,str,pos,id,fontsty,fontfam) {
 
 	xunitlength = brdPropsArr[brdID]["XuL"];
 	yunitlength = brdPropsArr[brdID]["YuL"];
-	if(typeof(fontsty) == "undefined"){
+	if(typeof(fontsty) === 'undefined'){
 		fontsty = '';
 	}
 		var textanchor = "middle";
@@ -2048,7 +2050,7 @@ this.text = function(p,str,pos,id,fontsty,fontfam) {
 		node.setAttribute("x",(p[0]*xunitlength+origin[0]+dx).toFixed(2));
 		node.setAttribute("y",(boardHeight-p[1]*yunitlength-origin[1]+dy).toFixed(2));
 		if(fontsty!=null) {
-		node.setAttribute("style",((fontsty!=null && typeof(fontsty)!="undefined")?fontsty:fontstyle));
+		node.setAttribute("style",((fontsty!=null && typeof(fontsty) !== 'undefined')?fontsty:fontstyle));
 		}
 		
 		node.setAttribute("class", txtLabelsClass);
@@ -2235,7 +2237,7 @@ function resizeThrottler() {
 	if (!resizeTimeout) {
 		resizeTimeout = setTimeout(function() {
 			resizeTimeout = null;
-			if(typeof(actualResizeHandler) == "function") {
+			if(typeof(actualResizeHandler) === 'function') {
 				actualResizeHandler();
 			}
 		}, 200);
@@ -2266,7 +2268,7 @@ this.axes = function(dx,dy,labels,gdx,gdy) {
 	
 	var nanObj = {dx:dx,dy:dy,gdx:gdx};
 	for (var name in nanObj){
-		if(isNaN(nanObj[name]) || typeof(nanObj[name]) == "undefined") {
+		if(isNaN(nanObj[name]) || typeof(nanObj[name]) === 'undefined') {
 			console.log(name + " is not a number! Aborting...");
 			return;
 		}
@@ -2281,8 +2283,8 @@ this.axes = function(dx,dy,labels,gdx,gdy) {
 	} 
 
 	var x, y, ldx, ldy, lx, ly, lxp, lyp, pnode, st;
-//  if (typeof dx=="string") { labels = dx; dx = null; }
-//  if (typeof dy=="string") { gdx = dy; dy = null; }
+//  if (typeof(dx) === 'string') { labels = dx; dx = null; }
+//  if (typeof(dy) === 'string') { gdx = dy; dy = null; }
 	dx = (dx==null?xunitlength:dx*xunitlength);
 	dy = (dy==null?dx:dy*yunitlength);
 	fontsize = Math.max(12, Math.min(dx/2,dy/2,fontsize));
@@ -2290,7 +2292,7 @@ this.axes = function(dx,dy,labels,gdx,gdy) {
 
 	// Grids
 	if(doGrids == 1) {
-		gdx = (typeof gdx=="string"?dx:gdx*xunitlength);
+		gdx = ((typeof(gdx) === 'string')?dx:gdx*xunitlength);
 		gdy = (gdy==null?dy:gdy*yunitlength);
 		pnode = document.createElementNS("http://www.w3.org/2000/svg", "path");
 		
@@ -2409,10 +2411,10 @@ this.axes = function(dx,dy,labels,gdx,gdy) {
 			}
 		} //syntax: this.text(p,str,pos,id,fontsty,fontfam)... Complains if id set
 
-		if(typeof(xAxisVble) == "undefined") {
+		if(typeof(xAxisVble) === 'undefined') {
 			xAxisVble = window.xAxisVble;
 		}
-		if(typeof(yAxisVble) == "undefined") {
+		if(typeof(yAxisVble) === 'undefined') {
 			yAxisVble = window.yAxisVble;
 		}
 		// Set for axisVbles
