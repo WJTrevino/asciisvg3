@@ -37,14 +37,20 @@ var ASVG = {};
 
 this.log = {};
 this.log.logLevels = {0:"SILENT", 1:"DEBUG", 2:"INFO", 3:"LOG", 4:"WARN", 5:"ERROR"};
+this.log.debug = function(message) {
+	window.console.debug(message);
+}
 this.log.info = function(message) {
-	console.info(message);
+	window.console.info(message);
+}
+this.log.log = function(message) {
+	window.console.log(message);
 }
 this.log.warn = function(message) {
-		console.warn(message);
+	window.console.warn(message);
 }
 this.log.error = function(message) {
-	console.error(message);
+	window.console.error(message);
 }
 
 // Interface Part 0: State
@@ -62,13 +68,10 @@ this.Boards = {};
 this.Config = {
 	boardDefaults: {
 		containerStyle: "",
-		paddingPX: 20,
+		padding: 20,
 		bgFill: "#FFFFFF",
-		boundingBox: undefined,
-		xMin: 0,
-		xMax: 0,
-		yMin: 0,
-		yMax: 0
+		plotWindow: [-5,5,-5,5],
+		zeroAxis: true,
 	},
 	pathDefaults: {
 		arrowFillColor: "#666666",
@@ -93,34 +96,30 @@ this.Config = {
 // Interface Part 2: Board operations
 
 class Board {
-	constructor(boardId,containerStyle,localOptions,context) {
+	constructor(boardId,localOptions,context) {
 		if (typeof(boardId) !== "string") return false; // TODO exceptions?
+		this.boardOptions = {...context.Config.boardDefaults,...localOptions};
 		this.boardId = boardId;
 		this.boardElement = document.getElementById(boardId);
-		this.boardElement.classList.add("asvg-borard");
-		this.boardOptions = {...context.Config.boardDefaults,...localOptions};
-		this.boardOptions.containerStyle = containerStyle; // if string
-		if (typeof(containerStyle) === "string") {
-			this.boardElement.style = containerStyle;
-		}
-		if (typeof(boundingBox) !== "undefined") {
-
-		}
+		this.boardElement.classList.add("asvg-board");
+		this.boardElement.style.cssText += `${this.boardOptions.containerStyle};`;
 		this.Paths = {};
 		this.context = context;
 
 		this.updatePosition();
 
 		// Needs context for log and legacy V2 methods.
-		context.V2.initBoard(boardId,-5,5,-5,5);
+		this.svgElement = context.V2.initBoard(boardId, ...this.boardOptions.plotWindow);
 		context.V2.axes(1,1,"TRUE",1,1);
 		context.V2.circle([0,0],1,"circle1");
 		context.V2.plot("x^2+x",-3,2);
-	}
 
-	set boundingBox(box) {
-		this.boundingBox = box;
-		xMin, xMax, yMin, yMax = box;
+		var button = document.createElement("div");
+		button.setAttribute("style",
+			"position: absolute; right: 10px; bottom: 10px; background: white;")
+		button.innerText = "A";
+		this.boardElement.appendChild(button);
+		button.addEventListener("mousedown",function(ev){alert("Click!");});
 	}
 
 	updatePosition() {
@@ -128,18 +127,24 @@ class Board {
 	}
 }
 Board.prototype.noop = function() {ASVG.log.warn("NOOP");}
+Board.prototype.deleteBoard = function() {
+	this.context.log.info(`Deleting Board ID: ${this.boardId}`)
+	this.boardElement.innerHTML = "";
+	delete(this.context.Boards[this.boardId]);
+	return this.context;
+}
 
-this.createBoard = function(boardId,containerStyle,localBoardOptions={}) { // analogue: initBoard()
+this.createBoard = function(boardId,localBoardOptions={}) { // analogue: initBoard()
 	var mergedBoardOptions = {...this.Config.boardDefaults,...localBoardOptions};
 	var board = {};
 
 	if (typeof(this.Boards[boardId]) === "object") {
-		this.log.warn(`Board already exists with same ID: ${id}`);
+		this.log.warn(`Board already exists with same ID: ${boardId}`);
 		return this.Boards[boardId];
 	}
 
 	this.log.info(`Creating Board ID: ${boardId}`)
-	board = new Board(boardId,containerStyle,localBoardOptions,this);
+	board = new Board(boardId,localBoardOptions,this);
 	this.Boards[boardId] = board;
 	return board;
 }
@@ -155,28 +160,21 @@ this.getBoard = function(id) { // analogue: setBoardParams(), kind of
 this.deleteBoard = function (id) {
 	var board = {};
 
-	// Passed id may be Board object or lookup string.
-	if (typeof(id) !== "string" && typeof(id) !== "object") {
-		this.log.error(`Board ID is not a Board object or a string: {$id}`);
-	}
-
-	if (typeof(id) === "object") {
-		board = id;
-		id = board.id;
-	}
-	else {
+	if (typeof(id) === "string") {
 		board = this.getBoard(id);
+		board.deleteBoard();
+	} else if (id instanceof Board) {
+		board.deleteBoard();
+	} else {
+		this.log.error(`Invalid Board or Board ID: ${id}`)
 	}
-
-	this.log.info(`Deleting Board ID: ${id}`)
-	delete(this.Boards[id]);
-	return this; // would allow ASVG.deleteBoard().newBoard();
+	return this;
 }
 
 
 // Interface Part 3: Path operations
 
-class Path extends Board {
+class Path {
 	constructor(id,board,context) {
 		return 0;
 	}
@@ -2294,7 +2292,7 @@ this.axes = function(dx,dy,labels,gdx,gdy) {
 	if(doGrids == 1) {
 		gdx = (typeof gdx=="string"?dx:gdx*xunitlength);
 		gdy = (gdy==null?dy:gdy*yunitlength);
-		pnode = document.createElementNS('http://www.w3.org/2000/svg', "path");
+		pnode = document.createElementNS("http://www.w3.org/2000/svg", "path");
 		
 		
 		st="";      
@@ -2438,7 +2436,7 @@ this.axes = function(dx,dy,labels,gdx,gdy) {
 this.initBoard = function(divID, x_min,x_max,y_min,y_max) {
 	boundingDiv = gebi(divID);
 	boundingDiv.style.position = "relative";
-	boardWidth = boundingDiv.getBoundingClientRect().width;   
+	boardWidth = boundingDiv.clientWidth;
 	boardHeight = Math.round(boardWidthToHeight * boardWidth);
 	// Positions from browser boundaries
 	boardLeft = boundingDiv.getBoundingClientRect().left;
@@ -2448,7 +2446,7 @@ this.initBoard = function(divID, x_min,x_max,y_min,y_max) {
 	makeSVG('svg', {id:svgID, width:boardWidth, height:boardHeight}, brdID);
 	theSVG = gebi(svgID);
 	// For use with DRAG (deprecated):
-	currCartMatrix[brdID] = [];   
+	currCartMatrix[brdID] = [];
 	//////////////////////////////////////
 	//
 	// Defaults for all boards on a page
@@ -2551,6 +2549,8 @@ this.initBoard = function(divID, x_min,x_max,y_min,y_max) {
 				stroke:'none', fill: 'white'}, svgID);
 
 	console.log(brdPropsArr); // DEBUGGING DELETEME
+
+	return theSVG;
 }
 
 }).apply(this.V2);
