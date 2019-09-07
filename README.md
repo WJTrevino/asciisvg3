@@ -1,7 +1,7 @@
 # AsciiSvg3
 
 AsciiSvg3 is the unofficial third version of the ASCIIsvg project, whicha is a JavaScript interface
-for generating [https://www.w3.org/TR/SVG2/](SVG) graphics in a more user-friendly way.
+for generating [SVG][4] graphics in a more user-friendly way.
 
 ## Versions of ASCIIsvg
 
