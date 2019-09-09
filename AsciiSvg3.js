@@ -20,13 +20,16 @@ for more details.
 
 "use strict";
 
+////////////////////////////////////////////////////////////////////////////////
 // Namespaced Interface
+////////////////////////////////////////////////////////////////////////////////
 
 var ASVG = {};
 (function(context){
 
-
+////////////////////////////////////////////////////////////////////////////////
 // State and Helper Functions
+////////////////////////////////////////////////////////////////////////////////
 
 this.Boards = {};
 
@@ -68,7 +71,9 @@ this.log.error = function(message) {
 	window.console.error(message);
 }
 
+////////////////////////////////////////////////////////////////////////////////
 // Interface Part 1: Default Drawing Options
+////////////////////////////////////////////////////////////////////////////////
 
 this.Config = {};
 
@@ -99,7 +104,9 @@ this.Config.pathDefaults = {
 	tickLength: 4 
 };
 
-// Interface Part 2: Board Operations
+////////////////////////////////////////////////////////////////////////////////
+// Interface Part 2: Board Class Definition
+////////////////////////////////////////////////////////////////////////////////
 
 class Board {
 	constructor(boardId,localOptions,context) {
@@ -144,9 +151,11 @@ class Board {
 		// context.V2.plot("x^2+x",-3,2);
 
 		var svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		svgElement.setAttribute('width', '100%');
-		svgElement.setAttribute('height', '100%');
-    svgElement.setAttribute('transform', 'scale(1,-1)');
+		svgElement.setAttributeList({
+      width: '100%',
+      height: '100%',
+      transform: 'scale(1,-1)'
+    });
 
 		this.boardElement.appendChild(svgElement);
 		
@@ -162,17 +171,11 @@ class Board {
 	}
 }
 
-Board.prototype.deleteBoard = function() {
-	this.context.log.info(`Deleting Board ID: ${this.boardId}`)
-	this.boardElement.innerHTML = "";
-	delete(this.context.Boards[this.boardId]);
-	return this.context;
-}
-
 /**
- * Translates an XY coordinate to a PX coordinate for SVG plotting.
+ * Transforms an XY position coordinate to PX measures for SVG plotting.
  *
- * @param {XY}
+ * @param {Array} A [x,y] position array in XY coordinates.
+ * @returns {Array} A [x,y] position array in PX coordinates.
  */
 Board.prototype.xyToPxPosition = function(XY = [0,0]) {  
   var xPx = this.xySystem.xScale*(XY[0]-this.xySystem.xMin);
@@ -180,71 +183,77 @@ Board.prototype.xyToPxPosition = function(XY = [0,0]) {
   return [xPx,yPx];
 }
 
+/**
+ * Transforms an XY length coordinate to PX measures for SVG plotting.
+ *
+ * @param {Array} A [x,y] length array in XY coordinates.
+ * @returns {Array} A [x,y] length array in PX coordinates.
+ */
 Board.prototype.xyToPxLength = function(LW = [0,0]) {
   var lengthPx = this.xySystem.xScale*LW[0];
   var widthPx = this.xySystem.yScale*LW[1];
   return [lengthPx,widthPx];
 }
 
-this.createBoard = function(boardId,localBoardOptions={}) { // analogue: initBoard()
-	var mergedBoardOptions = {...this.Config.boardDefaults,...localBoardOptions};
-	var board = {};
-
-	if (this.Boards[boardId] instanceof Board) {
-		this.log.warn(`Board already exists with same ID: ${boardId}`);
-		return this.Boards[boardId];
-	}
-
-	this.log.info(`Creating Board ID: ${boardId}`)
-	board = new Board(boardId,localBoardOptions,this);
-	this.Boards[boardId] = board;
-	return board;
-}
-
-this.getBoard = function(id) { // analogue: setBoardParams(), kind of
-	if (!(this.Boards[id] instanceof Board)) {
-		this.log.error(`Board ID does not exist: {$id}`);
-		return null;
-	}
-	return this.Boards[id];
-}
-
-this.deleteBoard = function (id) {
-	var board = {};
-
-	if (typeof(id) === 'string') {
-		board = this.getBoard(id);
-		board.deleteBoard();
-	} else if (id instanceof Board) {
-		board.deleteBoard();
-	} else {
-		this.log.error(`Invalid Board or Board ID: ${id}`)
-	}
-	return this;
-}
-
-
-// Interface Part 3: Path Operations
+////////////////////////////////////////////////////////////////////////////////
+// Interface Part 3: Path Class Definition
+////////////////////////////////////////////////////////////////////////////////
 
 class Path extends Board {
-	constructor(id,board,context) {
+	constructor(pathId,board,context) {
 		return 0;
 	}
 
-  newPath = function() {
-  	return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Interface Part 4: Context-specific Operations
+////////////////////////////////////////////////////////////////////////////////
+
+this.createBoard = function(boardId,localBoardOptions={}) { // analogue: initBoard()
+  var mergedBoardOptions = {...this.Config.boardDefaults,...localBoardOptions};
+  var board = {};
+
+  if (this.Boards[boardId] instanceof Board) {
+    this.log.warn(`Board already exists with same ID: ${boardId}`);
+    return this.Boards[boardId];
   }
-}
 
-Path.prototype.addPath = function() {
-  console.log("NOOP Path")
-}
-
-Board.prototype.addPath = function() {
-  console.log("NOOP Board");
+  this.log.info(`Creating Board ID: ${boardId}`)
+  board = new Board(boardId,localBoardOptions,this);
+  this.Boards[boardId] = board;
+  return board;
 }
 
 
+this.getBoard = function(id) { // analogue: setBoardParams(), kind of
+  if (!(this.Boards[id] instanceof Board)) {
+    this.log.error(`Board ID does not exist: {$id}`);
+    return null;
+  }
+  return this.Boards[id];
+}
+
+Board.prototype.deleteBoard = function() {
+  this.context.log.info(`Deleting Board ID: ${this.boardId}`)
+  this.boardElement.innerHTML = "";
+  delete(this.context.Boards[this.boardId]);
+  return this.context;
+}
+
+this.deleteBoard = function (id) {
+  var board = {};
+
+  if (typeof(id) === 'string') {
+    board = this.getBoard(id);
+    board.deleteBoard();
+  } else if (id instanceof Board) {
+    board.deleteBoard();
+  } else {
+    this.log.error(`Invalid Board or Board ID: ${id}`)
+  }
+  return this;
+}
 
 
 // Method: compatibilityMode()?
@@ -254,26 +263,15 @@ Board.prototype.addPath = function() {
 
 // Method: polarAxes()?
 
+
 // Change to drawing functions: should they accept XY positions (and convert them
 // to PX positions via method)? Would make specifying curves easier.
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // Legacy Interface: AsciiSVG (global namespace)
 // Docs: http://www1.chapman.edu/~jipsen/svg/asciisvgcommands.html
 //
-// There commands must be called before initPicture:
+// These commands must be called before initPicture:
 // border = "25" // Margin around graph area
 //
 // initPicture(xmin,xmax{,ymin{,ymax}})
@@ -2607,5 +2605,3 @@ this.initBoard = function(divID, x_min,x_max,y_min,y_max) {
 }).apply(this.V2);
 
 }).apply(ASVG);
-
-
