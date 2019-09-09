@@ -1,10 +1,10 @@
-/* AsciiSvg3.js
-Originally written by Peter Jipsen, http://www1.chapman.edu/~jipsen/
-Heavily revised by Murray Bourne, IntMath.com
-Reimplemented by Westley Trevino, trevino.pw
-==============================================================
+/* AsciiSvg3.js ================================================================
 JavaScript routines to dynamically generate Scalable Vector Graphics
 using a mathematical xy-coordinate system (y increases upwards).
+
+Originally written (C) 2009 by Peter Jipsen, http://www1.chapman.edu/~jipsen/
+Heavily revised (C) 2016 by Murray Bourne, IntMath.com
+Reimplemented (C) 2019 by Westley Trevino, trevino.pw
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,25 +15,40 @@ This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 General Public License (at http://www.gnu.org/copyleft/gpl.html) 
-for more details.*/
+for more details.
+============================================================================= */
 
 "use strict";
 
-////////////////////////////////////
-//
 // Namespaced Interface
-//
-////////////////////////////////////
 
 var ASVG = {};
 (function(context){
 
 
-////////////////////////////////////
-//
-// New API
-//
-////////////////////////////////////
+// State and Helper Functions
+
+this.Boards = {};
+
+/**
+ * Repeatedly applies setAttribute() for every key-value pair in an object.
+ * Overwrites existing attributes.
+ *
+ * @param {Object} attributeList One or more HTML attributes to apply.
+ * @this {Element} The Element to modify.
+ * @returns {Element} The Element with attributes applied.
+ */
+window.Element.prototype.setAttributeList = function(attributeList = {}) {
+  var element = this;
+  window.Object.keys(attributeList).forEach(function(key) {
+    if (typeof(attributeList[key]) === "undefined") {
+      console.warn(`Cannot add undefined attribute ${key} to element. Skipping.`)
+    } else {
+     element.setAttribute(key.toString(), attributeList[key].toString());
+    }
+  });
+  return element;
+}
 
 this.log = {};
 this.log.logLevels = {0:"SILENT", 1:"DEBUG", 2:"INFO", 3:"LOG", 4:"WARN", 5:"ERROR"};
@@ -53,67 +68,90 @@ this.log.error = function(message) {
 	window.console.error(message);
 }
 
-// Interface Part 0: State
-var $ = function(id) { return document.getElementById(id); }
+// Interface Part 1: Default Drawing Options
 
-this.updateContext = function(board,...rest) {
-	this.log.info(board);
-	this.log.info(rest);
-}
+this.Config = {};
 
-this.Boards = {};
-
-// Interface Part 1: Configuration
-
-this.Config = {
-	boardDefaults: {
-		containerStyle: "",
-		padding: 20,
-		bgFill: "#FFFFFF",
-		plotWindow: [-5,5,-5,5],
-		zeroAxis: true,
-	},
-	pathDefaults: {
-		arrowFillColor: "#666666",
-		axesStrokeColor: "#000000",
-		dotRadius: 4,
-		dotStrokeWidth: 1,
-		fontSize: 14.4,
-		gridStrokeColor: "#DDDDDD",
-		fillOpacity: 1,
-		markerWidth: 1,
-		markerStroke: "#000000",
-		markerFillColor: "#000000",
-		markerSize: 4,
-		markerType: "none",
-		segmentStrokeWidth: 1,
-		strokewidth: 2,
-		strokeOpacity: 1,
-		tickLength: 4 
-	}
+this.Config.boardDefaults = {
+	containerStyle: "",
+	padding: 20,
+	bgFill: "#FFFFFF",
+	plotWindow: [-5,5,-5,5],
+	zeroAxis: true,
 };
 
-// Interface Part 2: Board operations
+this.Config.pathDefaults = {
+	arrowFillColor: "#666666",
+	axesStrokeColor: "#000000",
+	dotRadius: 4,
+	dotStrokeWidth: 1,
+	fontSize: 14.4,
+	gridStrokeColor: "#DDDDDD",
+	fillOpacity: 1,
+	markerWidth: 1,
+	markerStroke: "#000000",
+	markerFillColor: "#000000",
+	markerSize: 4,
+	markerType: "none",
+	segmentStrokeWidth: 1,
+	strokewidth: 2,
+	strokeOpacity: 1,
+	tickLength: 4 
+};
+
+// Interface Part 2: Board Operations
 
 class Board {
 	constructor(boardId,localOptions,context) {
 		if (typeof(boardId) !== 'string') return null; // TODO exceptions?
-		this.boardOptions = {...context.Config.boardDefaults,...localOptions};
+		this.context = context;
 		this.boardId = boardId;
+		this.boardOptions = {...context.Config.boardDefaults,...localOptions};
+
 		this.boardElement = document.getElementById(boardId);
-		if (this.bordElement === null) return null; // TODO exceptions?
+		if (this.boardElement === null) return null; // TODO exceptions?
 		this.boardElement.classList.add("asvg-board");
 		this.boardElement.style.cssText += `${this.boardOptions.containerStyle};`;
-		this.Paths = {};
-		this.context = context;
 
-		this.updatePosition();
+    this.xySystem = {
+      xMin: this.boardOptions.plotWindow[0],
+      xMax: this.boardOptions.plotWindow[1],
+      yMin: this.boardOptions.plotWindow[2],
+      yMax: this.boardOptions.plotWindow[3],
+    };
+    this.xySystem.xRange = this.xySystem.xMax-this.xySystem.xMin;
+    this.xySystem.xScale = this.boardElement.clientWidth/this.xySystem.xRange;
+    this.xySystem.yRange = this.xySystem.yMax-this.xySystem.yMin;
+    this.xySystem.yScale = this.boardElement.clientHeight/this.xySystem.yRange;
+    this.xySystem.origin = [0,0];
+
+    this.pxSystem = {
+      xMin: 0,
+      xMax: this.boardElement.clientWidth,
+      xRange: this.boardElement.clientWidth,
+      xScale: 1,
+      yMin: 0,
+      yMax: this.boardElement.clientHeight,
+      yRange: this.boardElement.clientHeight,
+      yScale: 1,
+    }
+    this.pxSystem.origin = this.xyToPxPosition([0,0]);
 
 		// Needs context for log and legacy V2 methods.
-		this.svgElement = context.V2.initBoard(boardId, ...this.boardOptions.plotWindow);
-		context.V2.axes(1,1,"TRUE",1,1);
-		context.V2.circle([0,0],1,"circle1");
-		context.V2.plot("x^2+x",-3,2);
+		// this.svgElement = context.V2.initBoard(boardId, ...this.boardOptions.plotWindow);
+		// context.V2.axes(1,1,"TRUE",1,1);
+		// context.V2.circle([0,0],1,"circle1");
+		// context.V2.plot("x^2+x",-3,2);
+
+		var svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		svgElement.setAttribute('width', '100%');
+		svgElement.setAttribute('height', '100%');
+    svgElement.setAttribute('transform', 'scale(1,-1)');
+
+		this.boardElement.appendChild(svgElement);
+		
+
+		this.Paths = {};
 
 		var button = document.createElement("div");
 		button.setAttribute("style",
@@ -122,17 +160,30 @@ class Board {
 		this.boardElement.appendChild(button);
 		button.addEventListener("mousedown",function(ev){alert("Click!");});
 	}
-
-	updatePosition() {
-			return 0;
-	}
 }
-Board.prototype.noop = function() {ASVG.log.warn("NOOP");}
+
 Board.prototype.deleteBoard = function() {
 	this.context.log.info(`Deleting Board ID: ${this.boardId}`)
 	this.boardElement.innerHTML = "";
 	delete(this.context.Boards[this.boardId]);
 	return this.context;
+}
+
+/**
+ * Translates an XY coordinate to a PX coordinate for SVG plotting.
+ *
+ * @param {XY}
+ */
+Board.prototype.xyToPxPosition = function(XY = [0,0]) {  
+  var xPx = this.xySystem.xScale*(XY[0]-this.xySystem.xMin);
+  var yPx = this.xySystem.yScale*(XY[1]-this.xySystem.yMin);
+  return [xPx,yPx];
+}
+
+Board.prototype.xyToPxLength = function(LW = [0,0]) {
+  var lengthPx = this.xySystem.xScale*LW[0];
+  var widthPx = this.xySystem.yScale*LW[1];
+  return [lengthPx,widthPx];
 }
 
 this.createBoard = function(boardId,localBoardOptions={}) { // analogue: initBoard()
@@ -173,27 +224,25 @@ this.deleteBoard = function (id) {
 }
 
 
-// Interface Part 3: Path operations
+// Interface Part 3: Path Operations
 
-class Path {
+class Path extends Board {
 	constructor(id,board,context) {
 		return 0;
 	}
+
+  newPath = function() {
+  	return 0;
+  }
 }
 
-this.newPath = function() {
-	return 0;
+Path.prototype.addPath = function() {
+  console.log("NOOP Path")
 }
 
-this.modifyPath = function() {
-	return 0;
+Board.prototype.addPath = function() {
+  console.log("NOOP Board");
 }
-
-this.deletePath = function() {
-	return 0;
-}
-
-
 
 
 
