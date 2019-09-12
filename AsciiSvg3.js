@@ -109,7 +109,7 @@ this.Config.pathDefaults = {
 ////////////////////////////////////////////////////////////////////////////////
 
 class Board {
-  constructor(boardId,localOptions,pathOptions,contextArg) {
+  constructor(boardId,localBoardOptions,localPathOptions,contextArg=ASVG) {
     this.Context = contextArg;
 
     if (typeof boardId !== 'string') return null; // TODO exceptions?
@@ -119,12 +119,18 @@ class Board {
       return this.Context.Boards[boardId];
     }
 
-    this.log.info(`Creating Board ID: ${boardId}`)
+    this.Context.log.info(`Creating Board ID: ${boardId}`)
 
 
     this.boardId = boardId;
-    this.boardOptions = {...context.Config.boardDefaults,...localOptions};
-    this.pathOptions = {...context.Config.pathDefaults,...pathOptions};
+    this.boardOptions = {
+        ...this.Context.Config.boardDefaults,
+        ...localBoardOptions
+    };
+    this.pathOptions = {
+        ...this.Context.Config.pathDefaults,
+        ...localPathOptions
+    };
 
     this.boardElement = document.getElementById(boardId);
     if (this.boardElement === null) return null; // TODO exceptions?
@@ -141,7 +147,7 @@ class Board {
     this.xySystem.xScale = this.boardElement.clientWidth/this.xySystem.xRange;
     this.xySystem.yRange = this.xySystem.yMax-this.xySystem.yMin;
     this.xySystem.yScale = this.boardElement.clientHeight/this.xySystem.yRange;
-    this.xySystem.origin = [0,0];
+    this.xySystem.origin = {x:0,y:0};
 
     this.pxSystem = {
       xMin: 0,
@@ -155,12 +161,15 @@ class Board {
     }
     this.pxSystem.origin = this.xyToPxPosition([0,0]);
 
+    // TEMP DEBUGGING
     // Needs context for log and legacy V2 methods.
-    this.svgElement = context.V2.initBoard(boardId, ...this.boardOptions.plotWindow);
+    this.svgElement =
+        this.Context.V2.initBoard(boardId, ...this.boardOptions.plotWindow);
     this.Context.V2.axes(1,1,"TRUE",1,1);
     this.Context.V2.circle([0,0],1,"circle1");
     this.Context.V2.plot("x^2+x",-3,2);
 
+    // TEMP DEBUGGING
     // var svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     // svgElement.setAttributeList({
   //     width: '100%',
@@ -175,12 +184,12 @@ class Board {
 
     var button = document.createElement("div");
     button.setAttribute("style",
-      "position: absolute; right: 10px; bottom: 10px; background: white;")
+        "position: absolute; right: 10px; bottom: 10px; background: white;")
     button.innerText = "A";
     this.boardElement.appendChild(button);
     button.addEventListener("mousedown",function(ev){alert("Click!");});
 
-     context.Boards[boardId] = board;
+     this.Context.Boards[boardId] = this;
      return this;
   }
 }
@@ -194,7 +203,7 @@ class Board {
 Board.prototype.xyToPxPosition = function(XY = [0,0]) {  
   var xPx = this.xySystem.xScale*(XY[0]-this.xySystem.xMin);
   var yPx = this.xySystem.yScale*(XY[1]-this.xySystem.yMin);
-  return [xPx,yPx];
+  return {x:xPx,y:yPx};
 }
 
 /**
@@ -206,7 +215,7 @@ Board.prototype.xyToPxPosition = function(XY = [0,0]) {
 Board.prototype.xyToPxLength = function(LW = [0,0]) {
   var lengthPx = this.xySystem.xScale*LW[0];
   var widthPx = this.xySystem.yScale*LW[1];
-  return [lengthPx,widthPx];
+  return {l:lengthPx,w:widthPx};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,8 +243,7 @@ Board.prototype.createPath = function(pathType, ...rest) {
 ////////////////////////////////////////////////////////////////////////////////
 
 this.createBoard = function(boardId,localBoardOptions={},localPathOptions={}) { // analogue: initBoard()
-  var board = {};
-  board = new Board(boardId,localBoardOptions,this);
+  var board = new Board(boardId,localBoardOptions,localPathOptions,this);
   return board;
 }
 
@@ -2825,7 +2833,7 @@ this.initBoard = function(divID, x_min,x_max,y_min,y_max) {
   return theSVG;
 }
 
-this.Global = function(fnString) {
+this.updateGlobals = function(fnString) {
   return (Function(fnString))();
 }
 
