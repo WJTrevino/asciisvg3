@@ -167,7 +167,7 @@ class Board {
         this.Context.V2.initBoard(boardId, ...this.boardOptions.plotWindow);
     this.Context.V2.axes(1,1,"TRUE",1,1);
     this.Context.V2.circle([0,0],1,"circle1");
-    this.Context.V2.plot("x^2+x",-3,2);
+    this.Context.V2.plot("arcsin(x)",-3,2);
 
     // TEMP DEBUGGING
     // var svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -248,7 +248,7 @@ this.createBoard = function(boardId,localBoardOptions={},localPathOptions={}) { 
 }
 
 
-this.getBoard = function(id) { // analogue: setBoardParams(), kind of
+this.getBoard = function(id) { // analogue: this.setBoardParams(), kind of
   if (!(this.Boards[id] instanceof Board)) {
     this.log.error(`Board ID does not exist: {$id}`);
     return null;
@@ -289,214 +289,6 @@ this.deleteBoard = function (id) {
 
 // Change to drawing functions: should they accept XY positions (and convert them
 // to PX positions via method)? Would make specifying curves easier.
-
-
-
-
-  this.xyAxes = function(localOptions) {  
-
-    var pathOptions = {...this.Config.pathDefaults, ...localOptions};
-    console.log(pathOptions);
-    if(true) return;
-  
-  //////////////////////////////////////////
-  //
-  // dx for ticks and labels on horiz axis
-  // dy for ticks and labels on vert axis 
-  // labels can be any text - "labels" (for showing labels) or null to hide labels  
-  // gdx for grids horiz axis (null turns them off)
-  // gdy for grids on vert axis (null turns them off)
-  //
-  ///////////////////////////////////////////
-  
-  var nanObj = {dx:dx,dy:dy,gdx:gdx};
-  for (var name in nanObj){
-    if(isNaN(nanObj[name]) || typeof nanObj[name] === 'undefined') {
-      console.log(name + " is not a number! Aborting...");
-      return;
-    }
-  } 
-
-  if(dx==null && dy==null) {
-    doAxes=0;
-  }
-  
-  if(gdx==null && gdy==null) {
-    doGrids=0;
-  } 
-
-  var x, y, ldx, ldy, lx, ly, lxp, lyp, pnode, st;
-//  if (typeof dx === 'string') { labels = dx; dx = null; }
-//  if (typeof dy === 'string') { gdx = dy; dy = null; }
-  dx = (dx==null?xunitlength:dx*xunitlength);
-  dy = (dy==null?dx:dy*yunitlength);
-  fontsize = Math.max(12, Math.min(dx/2,dy/2,fontsize));
-  ticklength = fontsize/4;
-
-  // Grids
-  if(doGrids == 1) {
-    gdx = ((typeof gdx === 'string')?dx:gdx*xunitlength);
-    gdy = (gdy==null?dy:gdy*yunitlength);
-    pnode = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    
-    
-    st="";      
-    if (gdx!==null && gdx!== 0 && gdx > 0) {  
-      for (x = origin[0]; x<boardWidth; x = x+gdx)
-        st += " M"+x.toFixed(2)+",0"+" "+x.toFixed(2)+","+boardHeight.toFixed(2);   
-      for (x = origin[0]-gdx; x>0; x = x-gdx)
-        st += " M"+x.toFixed(2)+",0"+" "+x.toFixed(2)+","+boardHeight.toFixed(2);
-    } else {
-      console.log("Is your gdx null or otherwise strange? Aborting...");
-      return;
-    }
-    if (gdy!==null && gdy!== 0 && gdy > 0 ) { 
-      if( showYaxis == 1) {
-        if(gdy > 0 ) {
-          for (y = boardHeight-origin[1]; y<boardHeight-0.99*padding; y = y+gdy){
-          st += " M0,"+y.toFixed(2)+" "+boardWidth+","+y.toFixed(2);        
-          }
-        }
-        for (y = boardHeight-origin[1]-gdy; y>0.99*padding; y = y-gdy) {
-          st += " M0,"+y.toFixed(2)+" "+boardWidth+","+y.toFixed(2);    
-        }
-      }
-    } else {
-      console.log("Is your yMax less than your yMin? Aborting...");
-      return;
-    }
-    
-    pnode.setAttribute("d",st);
-    pnode.setAttribute("stroke-width", 1);
-    pnode.setAttribute("shape-rendering", "crispEdges");  
-    pnode.setAttribute("stroke", gridstroke);
-    pnode.setAttribute("fill", fill);
-    theSVG.appendChild(pnode);
-  }
-  
-  if(doAxes == 1) {
-    st = "";
-    // Axes
-    pnode = document.createElementNS('http://www.w3.org/2000/svg', "path");
-    // xAxis
-    st += "M0,"+(boardHeight-origin[1]).toFixed(2)+" "+boardWidth.toFixed(2)+","+(boardHeight-origin[1]).toFixed(2);
-
-    // yAxis
-    if(showYaxis == 1) {
-      st += " M"+origin[0].toFixed(2)+",0 "+origin[0].toFixed(2)+","+boardHeight.toFixed(2);
-    }
-
-    if(dx !== null && dx > 0) {
-      for (x = origin[0]+dx; x<boardWidth; x = x+dx) {
-        st += " M"+x.toFixed(2)+","+(boardHeight-origin[1]+ticklength).toFixed(2)+" "+x.toFixed(2)+","+
-          (boardHeight-origin[1]-ticklength).toFixed(2);
-      }
-      for (x = origin[0]-dx; x>0; x = x-dx) {
-        st += " M"+x.toFixed(2)+","+(boardHeight-origin[1]+ticklength).toFixed(2)+" "+x.toFixed(2)+","+
-          (boardHeight-origin[1]-ticklength).toFixed(2);
-      }
-
-      if (showYaxis == 0) {
-        st += " M"+origin[0].toFixed(2)+","+(boardHeight-origin[1]+ticklength).toFixed(2)+" "+origin[0].toFixed(2)+", "+(boardHeight-origin[1]-ticklength).toFixed(2);
-      }     
-    }
-
-    if(dy !== null && dy > 0 && showYaxis == 1) {
-      for (y = boardHeight-origin[1]+dy; y<boardHeight-0.99*padding; y = y+dy) {
-        st += " M"+(origin[0]+ticklength).toFixed(2)+","+y.toFixed(2)+" "+(origin[0]-ticklength).toFixed(2)+","+y.toFixed(2);       
-      }
-      for (y = boardHeight-origin[1]-dy; y>0.99*padding; y = y-dy) {  
-        st += " M"+(origin[0]+ticklength).toFixed(2)+","+y.toFixed(2)+" "+(origin[0]-ticklength).toFixed(2)+","+y.toFixed(2);     
-      } 
-    }
-
-    pnode.setAttribute("d",st);
-    pnode.setAttribute("stroke-width", 1);
-    pnode.setAttribute("shape-rendering", "crispEdges");
-    pnode.setAttribute("stroke", axesstroke);
-    pnode.setAttribute("fill", fill);
-    theSVG.appendChild(pnode);  
-
-    // Axes labels
-    
-    if (labels!=null && labels!="none") {
-      ldx = dx/xunitlength;
-      ldy = dy/yunitlength; 
-      lx = (xmin>0 || xmax<0?xmin:0);
-      ly = (ymin>0 || ymax<0?ymin:0);
-      lxp = (ly==0?"below":"above");
-      lyp = (lx==0?"left":"right");
-      if (gdx!==null && gdx!== 0) {
-        var ddx = Math.floor(1.1-Math.log(ldx)/Math.log(10))+2;
-        for (x = ldx; x<=xmax; x = x+ldx) {
-          this.text([x,ly],chopZ(x.toFixed(ddx)),lxp);        
-        }
-        for (x = -ldx; xmin<=x; x = x-ldx)
-          this.text([x,ly],chopZ(x.toFixed(ddx)),lxp);
-
-        if (showYaxis == 0) {
-          this.text([0,ly],0,lxp);
-        }       
-      }
-      if (gdy!==null && gdy!== 0) { 
-        var ddy = Math.max(0, Math.floor(1.1-Math.log(ldy)/Math.log(10))+2);     
-        if(ddy < 0) {
-          console.log("ddy is < 0. Aborting...");
-          return;
-        }
-        if (showYaxis == 1) {
-          for (y = ldy; y<=ymax; y = y+ldy) {
-            this.text([lx,y],chopZ(y.toFixed(ddy)),lyp);
-          }
-          for (y = -ldy; ymin<=y; y = y-ldy)
-            this.text([lx,y],chopZ(y.toFixed(ddy)),lyp);
-        } 
-      }
-    } //syntax: this.text(p,str,pos,id,fontsty,fontfam)... Complains if id set
-
-    if(typeof xAxisVble === 'undefined') {
-      xAxisVble = window.xAxisVble;
-    }
-    if(typeof yAxisVble === 'undefined') {
-      yAxisVble = window.yAxisVble;
-    }
-    // Set for axisVbles
-    txtLabelsClass = "intmathItalic";
-    this.text([xmax+(padding-10)/xunitlength,0],xAxisVble,"above",svgID+"xAxVbl","",'KaTeX_Math,"Times New Roman",Times,serif'); // x-axis label
-    if( showYaxis == 1) {
-      this.text([0,ymax+(padding-10)/yunitlength],yAxisVble,"right",svgID+"yAxVbl","",'KaTeX_Math,"Times New Roman",Times,serif'); // y-axis label
-    }
-    // Set back for any additional text
-    txtLabelsClass = "intmath";
-    markerstrokewidth = 0.5;
-    stroke = "#555";
-    this.arrowhead([0,0],[xmax+padding/xunitlength,0],"xaxisArr");
-    if( showYaxis == 1) {
-      this.arrowhead([0,0],[0,ymax+padding/yunitlength],"yaxisArr");
-    }
-
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 // Legacy Interface: AsciiSVG (global namespace)
@@ -694,30 +486,30 @@ var dotDraggable = false; // Has to be explicitly turned on for each board/dot
 var cpi = "\u03C0";
 var ctheta = "\u03B8";
 var pi = Math.PI;
-var ln = Math.log;
 var e = Math.E;
-var arcsin = Math.asin;
-var arccos = Math.acos;
-var arctan = Math.atan;
-var sin = function(x) { return Math.sin(x) };
-var cos = function(x) { return Math.cos(x) };
-var tan = function(x) { return Math.tan(x) };
-var sec = function(x) { return 1/Math.cos(x) };
-var csc = function(x) { return 1/Math.sin(x) };
-var cot = function(x) { return 1/Math.tan(x) };
-var logten = function (x) { return Math.log(x)/Math.log(10) };
-var arcsec = function(x) { return arccos(1/x) };
-var arccsc = function(x) { return arcsin(1/x) };
-var arccot = function(x) { return arctan(1/x) };
-var sinh = function(x) { return (Math.exp(x)-Math.exp(-x))/2 };
-var cosh = function(x) { return (Math.exp(x)+Math.exp(-x))/2 };
-var tanh = function(x) { return (Math.exp(x)-Math.exp(-x))/(Math.exp(x)+Math.exp(-x)) };
-var sech = function(x) { return 1/cosh(x) };
-var csch = function(x) { return 1/sinh(x) };
-var coth = function(x) { return 1/tanh(x) };
-var arcsinh = function(x) { return ln(x+Math.sqrt(x*x+1)) };
-var arccosh = function(x) { return ln(x+Math.sqrt(x*x-1)) };
-var arctanh = function(x) { return ln((1+x)/(1-x))/2 };
+var ln = function(x) { return Math.log(x); };
+var logten = function (x) { return Math.log10(x); };
+var sin = function(x) { return Math.sin(x); };
+var cos = function(x) { return Math.cos(x); };
+var tan = function(x) { return Math.tan(x); };
+var sec = function(x) { return 1/Math.cos(x); };
+var csc = function(x) { return 1/Math.sin(x); };
+var cot = function(x) { return 1/Math.tan(x); };
+var arcsin = function(x) { return Math.asin(x); };
+var arccos = function(x) { return Math.acos(x); };
+var arctan = function(x) { return Math.atan(x); };
+var arcsec = function(x) { return Math.acos(1/x); };
+var arccsc = function(x) { return Math.asin(1/x); };
+var arccot = function(x) { return Math.atan(1/x); };
+var sinh = function(x) { return Math.sinh(x); };
+var cosh = function(x) { return Math.cosh(x); };
+var tanh = function(x) { return Math.tanh(x); };
+var sech = function(x) { return 1/cosh(x); };
+var csch = function(x) { return 1/sinh(x); };
+var coth = function(x) { return 1/tanh(x); };
+var arcsinh = function(x) { return Math.asinh(x); };
+var arccosh = function(x) { return Math.acosh(x); };
+var arctanh = function(x) { return Math.atanh(x); };
 var arcsech = function(x) { return arccosh(1/x) };
 var arccsch = function(x) { return arcsinh(1/x) };
 var arccoth = function(x) { return arctanh(1/x) };
@@ -838,36 +630,12 @@ function removeEle(ele) {
 // For cases where script refers back to a previous board on page
 //
 /////////////////////////////////////
-function setBoardParams(brdID) {
-//console.log(svgID)  
-  
-  
-  /*** deprecated **
-  
-//console.log(boardPropsArr)  
-  svgID = brdID+"SVG";
-  xmin = boardPropsArr[svgID+"xMin"];
-  ymin = boardPropsArr[svgID+"yMin"];
-  xmax = boardPropsArr[svgID+"xMax"];
-  ymax = boardPropsArr[svgID+"yMax"];
-  boardWidth = boardPropsArr[svgID+"Width"];
-  boardHeight = boardPropsArr[svgID+"Height"];
-  boardLeft = boardPropsArr[svgID+"Left"];
-  boardTop = boardPropsArr[svgID+"Top"];
-  xunitlength = boardPropsArr[svgID+"XuL"];
-  yunitlength = boardPropsArr[svgID+"YuL"];
-  origin[0] = boardPropsArr[svgID+"ox"];
-  origin[1] = boardPropsArr[svgID+"oy"];
-  padding = boardPropsArr[svgID+"pad"];
-*/  
-  
-  
-  /*** latest ***/
-//console.log(brdPropsArr)  
+this.setBoardParams = function(brdID) {
+  // console.log(brdPropsArr)  
   
   // Why this is necessary? (brdID is not global, for some reason)
   brdID = svgID.replace("SVG", "");
-//console.log(svgID, brdID, brdPropsArr[brdID]) 
+  // console.log(svgID, brdID, brdPropsArr[brdID]) 
   xmin = brdPropsArr[brdID]["xMin"];
   ymin = brdPropsArr[brdID]["yMin"];
   xmax = brdPropsArr[brdID]["xMax"];
@@ -878,7 +646,7 @@ function setBoardParams(brdID) {
   boardTop = brdPropsArr[brdID]["Top"];
   xunitlength = brdPropsArr[brdID]["XuL"];
   yunitlength = brdPropsArr[brdID]["YuL"];
-//console.log(yunitlength)  
+  // console.log(yunitlength)  
   origin[0] = brdPropsArr[brdID]["ox"];
   origin[1] = brdPropsArr[brdID]["oy"];
   padding = brdPropsArr[brdID]["pad"];
@@ -886,8 +654,8 @@ function setBoardParams(brdID) {
   actualXmax = brdPropsArr[brdID]["actualXmax"];
   actualYmin = brdPropsArr[brdID]["actualYmin"];
   actualYmax = brdPropsArr[brdID]["actualYmax"];
-//console.log(brdPropsArr)  
-}
+  // console.log(brdPropsArr)  
+};
 
 //////////////////////////////////////////////
 //
@@ -1025,7 +793,7 @@ this.makeDraggable = function(targ, func, curveId) {
   brdID = targ.parentNode.id.replace("SVG", "");
   
   // Must set these here, with "var"
-  // TODO: Use: setBoardParams(brdID)..?
+  // TODO: Use: this.setBoardParams(brdID)..?
   
   var xunitlength = brdPropsArr[brdID]["XuL"];
   var yunitlength = brdPropsArr[brdID]["YuL"];
@@ -1458,7 +1226,7 @@ function mseTchPos(evt) {
 var joinSegArr = [];
 var joinLineArr = [];
 this.ASdot = function(center, radius, s, f, id) {
-    setBoardParams(brdID);
+    this.setBoardParams(brdID);
   slicedSVG = svgID.slice(0,-3);
   brdPropsArr[slicedSVG][id] = [];
   brdPropsArr[slicedSVG][id]["cart"] = center;
@@ -1656,7 +1424,7 @@ this.draggablePtsSegLineJoiner = function(lineSeg, lineSegType, ptsArray, ptName
   
 
 this.line = function(p, q, id, strokedasharray) {
-  setBoardParams(svgID);  
+  this.setBoardParams(svgID);  
     var node;
     if (id) {
     node = doc.getElementById(id);
@@ -1780,7 +1548,7 @@ this.line = function(p, q, id, strokedasharray) {
 
 this.segment = function(p, q, id, strokedasharray) {
 //console.log(p,q)  
-  setBoardParams(svgID);
+  this.setBoardParams(svgID);
   if( (p[0] > actualXmin && p[0] < actualXmax && p[1] > actualYmin && p[1] < actualYmax)
     ||  (q[0] > actualXmin && q[0] < actualXmax && q[1] > actualYmin && q[1] < actualYmax)  
     ||  ( (p[0]+q[0])/2 > actualXmin && (p[0]+q[0])/2 < actualXmax 
@@ -1879,7 +1647,7 @@ this.pathGivenD = function(d,id) {
 this.path = function(plist,id,c) {
 
 //console.log(plist); 
-    setBoardParams(svgID);
+    this.setBoardParams(svgID);
     if (c==null) c="";
     var node, st, i;
     if (id!=null) {
