@@ -1,28 +1,31 @@
-/* AsciiSvg3.js ================================================================
-JavaScript routines to dynamically generate Scalable Vector Graphics
-using a mathematical xy-coordinate system (y increases upwards).
+/**
+ * @license GPL-2.0-or-later
+ * JavaScript interface for SVG drawing and plotting.
+ * Copyright (C) 2019 Westley Trevino
+ *
+ * Original version (C) 2009 by Peter Jipsen, http://www1.chapman.edu/~jipsen/
+ * Heavily revised (C) 2016 by Murray Bourne, IntMath.com
+ * Reimplemented (C) 2019 by Westley Trevino, trevino.pw
+ * 
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or (at
+ * your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful, 
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License (at http://www.gnu.org/copyleft/gpl.html) 
+ * for more details.
+ */
 
-Originally written (C) 2009 by Peter Jipsen, http://www1.chapman.edu/~jipsen/
-Heavily revised (C) 2016 by Murray Bourne, IntMath.com
-Reimplemented (C) 2019 by Westley Trevino, trevino.pw
-
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 2 of the License, or (at
-your option) any later version.
-
-This program is distributed in the hope that it will be useful, 
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-General Public License (at http://www.gnu.org/copyleft/gpl.html) 
-for more details.
-============================================================================= */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-// Namespaced Interface
-////////////////////////////////////////////////////////////////////////////////
+/*
+ * Namespaced Interface
+ */
+
 
 var ASVG = {};
 (function(){
@@ -35,24 +38,12 @@ this.Boards = {};
 
 /**
  * Repeatedly applies setAttribute() for every key-value pair in an object.
- * Overwrites existing attributes.
+ * Overwrites existing attributes if present.
  *
  * @param {Object} attributeList One or more HTML attributes to apply.
  * @this {Element} The Element to modify.
  * @returns {Element} The Element with attributes applied.
  */
-window.Element.prototype.setAttributeList = function(attributeList = {}) {
-  var element = this;
-  window.Object.keys(attributeList).forEach(function(key) {
-    if (typeof attributeList[key] === "undefined") {
-      console.warn(`Cannot add undefined attribute ${key} to element. Skipping.`)
-    } else {
-     element.setAttribute(key.toString(), attributeList[key].toString());
-    }
-  });
-  return element;
-}
-
 this.log = {};
 this.log.logLevels = {0:"SILENT", 1:"DEBUG", 2:"INFO", 3:"LOG", 4:"WARN", 5:"ERROR"};
 this.log.debug = function(message) {
@@ -72,7 +63,7 @@ this.log.error = function(message) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Interface Part 1: Default Drawing Options
+// Interface Part 1: Default Drawing Options and Commands
 ////////////////////////////////////////////////////////////////////////////////
 
 this.Config = {};
@@ -81,28 +72,53 @@ this.Config.boardDefaults = {
   containerStyle: "",
   padding: 20,
   bgFill: "#FFFFFF",
+  tickLength: 4,
   plotWindow: [-5,5,-5,5],
   zeroAxis: true,
 };
 
-this.Config.pathDefaults = {
-  arrowFillColor: "#666666",
-  axesStrokeColor: "#000000",
+this.Config.pathDefaults = { // TODO: Replace with CSS?
+  arrowFillColor: '#666666',
+  axesStrokeColor: '#000000',
   dotRadius: 4,
   dotStrokeWidth: 1,
-  fontSize: 14.4,
-  gridStrokeColor: "#DDDDDD",
+  fillColor: 'none',
   fillOpacity: 1,
-  markerWidth: 1,
-  markerStroke: "#000000",
-  markerFillColor: "#000000",
+  fontColor: '#000000',
+  fontFamily: '"Times New Roman", Times, serif',
+  fontSize: 14.4,
+  fontStyle: 'normal',
+  fontOutlineColor: 'none',
+  fontWeight: 'normal',
+  gridStrokeColor: '#CCCCCC',
+  markerFill: '#000000',
   markerSize: 4,
-  markerType: "none",
-  segmentStrokeWidth: 1,
-  strokewidth: 2,
+  markerStrokeColor: '#000000',
+  markerStrokeWidth: 1,
+  markerType: 'none',
+  shapeRendering: '',
+  strokeColor: '#000000',
+  strokeDashArray: '',
+  strokeDashOffset: '',
+  segStrokeWidth: 1,
   strokeOpacity: 1,
-  tickLength: 4 
+  strokeWidth: 2,
+  tickLength: 4,
 };
+
+var createSVGElement = function(tag, attributeList) {
+  var element = this;
+  window.Object.keys(attributeList).forEach(function(key) {
+    if (typeof attributeList[key] === "undefined") {
+      console.warn(`Cannot add undefined attribute ${key} to element. Skipped.`)
+    } else {
+     element.setAttribute(key.toString(), attributeList[key].toString());
+    }
+  });
+  return element;
+};
+
+console.log(createSVGElement);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Interface Part 2: Board Class Definition
@@ -125,11 +141,11 @@ class Board {
     this.boardId = boardId;
     this.boardOptions = {
         ...this.Context.Config.boardDefaults,
-        ...localBoardOptions
+        ...localBoardOptions,
     };
     this.pathOptions = {
         ...this.Context.Config.pathDefaults,
-        ...localPathOptions
+        ...localPathOptions,
     };
 
     this.boardElement = document.getElementById(boardId);
@@ -159,14 +175,16 @@ class Board {
       yRange: this.boardElement.clientHeight,
       yScale: 1,
     }
-    this.pxSystem.origin = this.xyToPxPosition([0,0]);
+    this.pxSystem.origin = this.toPx({x:0, y:0});
 
     // TEMP DEBUGGING
-    // Needs context for log and legacy V2 methods.
+    // Needs Context for log and legacy V2 methods.
     this.svgElement =
         this.Context.V2.initBoard(boardId, ...this.boardOptions.plotWindow);
+    this.Context.V2.updateOptions(this.pathOptions);
     this.Context.V2.axes(1,1,"TRUE",1,1);
-    this.Context.V2.circle([0,0],1,"circle1");
+    this.Context.V2.circle([0,0],1);
+    this.Context.V2.updateOptions({strokeWidth: 5});
     this.Context.V2.plot("arcsin(x)",-3,2);
 
     // TEMP DEBUGGING
@@ -178,7 +196,6 @@ class Board {
   //   });
 
     this.boardElement.appendChild(this.svgElement);
-    
 
     this.Paths = {};
 
@@ -189,33 +206,18 @@ class Board {
     this.boardElement.appendChild(button);
     button.addEventListener("mousedown",function(ev){alert("Click!");});
 
+    console.log(this);
      this.Context.Boards[boardId] = this;
      return this;
   }
-}
 
-/**
- * Transforms an XY position coordinate to PX measures for SVG plotting.
- *
- * @param {Array} A [x,y] position array in XY coordinates.
- * @returns {Array} A [x,y] position array in PX coordinates.
- */
-Board.prototype.xyToPxPosition = function(XY = [0,0]) {  
-  var xPx = this.xySystem.xScale*(XY[0]-this.xySystem.xMin);
-  var yPx = this.xySystem.yScale*(XY[1]-this.xySystem.yMin);
-  return {x:xPx,y:yPx};
-}
-
-/**
- * Transforms an XY length coordinate to PX measures for SVG plotting.
- *
- * @param {Array} A [x,y] length array in XY coordinates.
- * @returns {Array} A [x,y] length array in PX coordinates.
- */
-Board.prototype.xyToPxLength = function(LW = [0,0]) {
-  var lengthPx = this.xySystem.xScale*LW[0];
-  var widthPx = this.xySystem.yScale*LW[1];
-  return {l:lengthPx,w:widthPx};
+  toPx(xy={x: 0, y: 0, w: 0, h: 0}) {
+    let xPx = this.xySystem.xScale * (xy.x - this.xySystem.xMin);
+    let yPx = this.xySystem.yScale * (xy.y - this.xySystem.yMin);
+    let wPx = this.xySystem.xScale * xy.w;
+    let hPx = this.xySystem.yScale * xy.h; 
+    return {x: xPx, y: yPx, w: wPx, h: hPx};
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,20 +225,16 @@ Board.prototype.xyToPxLength = function(LW = [0,0]) {
 ////////////////////////////////////////////////////////////////////////////////
 
 class Path {
-  constructor(pathId,boardObject,localOptions,context) {
+  constructor(pathId,parentBoard,localOptions) {
     if(typeof pathId !== "string") return null; // TODO: Exceptions?
-    this.boardObject = boardObject;
-    this.context = boardObject.context;
+    this.Context = boardObject.Context;
+    this.parentBoard = parentBoard; // check for null?
     this.pathId = pathId;
     this.pathOptions = {...this.context.Config.pathDefaults,...localOptions};
     return this;
   }
 }
 
-Board.prototype.createPath = function(pathType, ...rest) {
-  var a = new Path("test",this,{},this.context);
-  return a;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Interface Part 4: Context-specific Operations
@@ -246,7 +244,8 @@ this.createBoard = function(boardId,localBoardOptions={},localPathOptions={}) { 
   var board = new Board(boardId,localBoardOptions,localPathOptions,this);
   return board;
 }
-
+Board.prototype.createBoard = this.createBoard;
+Path.prototype.createBoard = this.createBoard;
 
 this.getBoard = function(id) { // analogue: this.setBoardParams(), kind of
   if (!(this.Boards[id] instanceof Board)) {
@@ -255,13 +254,25 @@ this.getBoard = function(id) { // analogue: this.setBoardParams(), kind of
   }
   return this.Boards[id];
 }
+Board.prototype.getBoard = function(id) {
+  if (typeof id === 'undefined') {
+    return this.parentBoard;
+  }  else {
+    return this.Context.getBoard(id);
+  }
+}
+Path.prototype.getBoard = Board.prototype.getBoard;
+
+
+Path.prototype.deleteBoard = function() {
+  return this.board.deleteBoard();
+}
 
 Board.prototype.deleteBoard = function() {
-  this.context.log.info(`Deleting Board ID: ${this.boardId}`)
+  this.Context.log.info(`Deleting Board ID: ${this.boardId}`)
   this.boardElement.innerHTML = "";
-  this.boardElement.
-  delete(this.context.Boards[this.boardId]);
-  return this.context;
+  this.Context.Boards[this.boardId] = null;
+  return this.Context;
 }
 
 this.deleteBoard = function (id) {
@@ -278,6 +289,10 @@ this.deleteBoard = function (id) {
   return this;
 }
 
+Board.prototype.createPath = function(pathType, ...rest) {
+  var a = new Path("test",this,{},this.context);
+  return a;
+}
 
 // Method: compatibilityMode()?
 // This method exposes the internal methods of AsciiSVG(-IM) in the global
@@ -371,12 +386,12 @@ this.V2 = {};
 
 ///////////////////////////////////////////
 //
-// Original AsciiSVG-IM module code below
+// Migrated AsciiSVG-IM Module Code
 //
 ///////////////////////////////////////////
 
 var corpColor = "#165a71";
-window.brdPropsNS = {};  // Global object container
+var brdPropsNS = {};  // Global object container
 
 var doc = document;
 function gebi(ele) {  
@@ -458,8 +473,8 @@ var stroke = "black";
 var axesstroke = corpColor;
 var strokewidth = "1";
 var markerstrokewidth = "1";
-var strokedasharray = null;
-var strokedashoffset = null;
+var strokedasharray = '';
+var strokedashoffset = '';
 var markerstroke = corpColor;
 var markerfill = corpColor;
 var markersize = 4;
@@ -471,7 +486,7 @@ var segstrokewidth = 1;
 var strokeopacity = 1;
 var fill = "none";
 var fillopacity = 1;
-var shaperendering = null;
+var shaperendering = '';
 
 
 /* deprecated */
@@ -1444,8 +1459,8 @@ this.line = function(p, q, id, strokedasharray) {
       }, svgID);    
     }
 
-    if (strokedasharray != null) node.setAttribute("stroke-dasharray", strokedasharray);
-  if (shaperendering != null) node.setAttribute("shape-rendering", shaperendering);
+    if (strokedasharray !== '') node.setAttribute("stroke-dasharray", strokedasharray);
+  if (shaperendering !== '') node.setAttribute("shape-rendering", shaperendering);
 
   var xmin = brdPropsArr[brdID]["xMin"];
   var xmax = brdPropsArr[brdID]["xMax"];  
@@ -1569,12 +1584,11 @@ this.segment = function(p, q, id, strokedasharray) {
         "stroke-opacity":strokeopacity,
         "fill":fill,
         "fill-opacity": fillopacity,
-        "stroke-dasharray": strokedasharray,
         "vector-effect": "non-scaling-stroke"     
         }, svgID);    
     }
-    if (strokedasharray != null) node.setAttribute("stroke-dasharray", strokedasharray);
-    if (shaperendering != null) node.setAttribute("shape-rendering", shaperendering);
+    if (strokedasharray !== '') node.setAttribute("stroke-dasharray", strokedasharray);
+    if (shaperendering !== '') node.setAttribute("shape-rendering", shaperendering);
     slopeAng = arctan( (q[1]-p[1]) / (q[0]-p[0]));
     //"dotarrow" means start with dot, end with arrow
     //"arrowdot" means the arrow points to dot
@@ -1705,9 +1719,9 @@ this.path = function(plist,id,c) {
     node.setAttribute("stroke-width", strokewidth);
     if(typeof opacity !== 'undefined') {node.setAttribute("opacity", opacity);}
     node.setAttribute("vector-effect", "non-scaling-stroke");
-    if (strokedasharray!=null) 
+    if (strokedasharray !== '') 
     node.setAttribute("stroke-dasharray", strokedasharray);
-    if (strokedashoffset!=null) 
+    if (strokedashoffset !== '') 
     node.setAttribute("stroke-dashoffset", strokedashoffset);
     if (marker=="dot" || marker=="arrowdot")
     for (i=0; i<plist.length; i++)
@@ -2501,7 +2515,7 @@ this.initBoard = function(divID, x_min,x_max,y_min,y_max) {
   //
   //////////////////////////////////////
   strokewidth = "1"; // pixel
-  strokedasharray = null;
+  strokedasharray = '';
   stroke = "black"; // default line color
   fill = "none";    // default fill color
   fontstyle = "normal"; // default shape for text labels
@@ -2601,8 +2615,33 @@ this.initBoard = function(divID, x_min,x_max,y_min,y_max) {
   return theSVG;
 }
 
-this.updateGlobals = function(fnString) {
-  return (Function(fnString))();
+this.updateOptions = function(newConfig={}) {
+  arrowfill = newConfig.arrowFillColor || arrowfill;
+  axesstroke = newConfig.axesStrokeColor || axesstroke;
+  dotradius = newConfig.dotRadius || dotradius;
+  dotstrokewidth = newConfig.dotStrokeWidth || dotstrokewidth;
+  fill = newConfig.fillColor || fill;
+  fillopacity = newConfig.fillOpacity || fillopacity;
+  fontfill = newConfig.fontColor || fontfill;
+  fontfamily = newConfig.fontFamily || fontfamily;
+  fontsize = newConfig.fontSize || fontsize;
+  fontstyle = newConfig.fontStyle || fontstyle;
+  fontstroke = newConfig.fontOutlineColor || fontstroke;
+  fontweight = newConfig.fontWeight || fontweight;
+  gridstroke = newConfig.gridStrokeColor || gridstroke;
+  markerfill = newConfig.markerFill || markerfill;
+  markersize = newConfig.markerSize || markersize;
+  markerstroke = newConfig.markerStrokeColor || markerstroke;
+  markerstrokewidth = newConfig.markerStrokeWidth || markerstrokewidth;
+  marker = newConfig.markerType || marker;
+  stroke = newConfig.strokeColor || stroke;
+  strokewidth = newConfig.strokeWidth || strokewidth;
+  strokedashoffset = newConfig.strokeDashOffset || strokedashoffset;
+  segstrokewidth = newConfig.segStrokeWidth || segstrokewidth;
+  strokeopacity = newConfig.strokeOpacity || strokeopacity;
+  shaperendering = newConfig.shapeRendering || shaperendering;
+  strokedasharray = newConfig.strokeDashArray || strokedasharray;
+  ticklength = newConfig.tickLength || ticklength;
 }
 
 }).apply(this.V2);
